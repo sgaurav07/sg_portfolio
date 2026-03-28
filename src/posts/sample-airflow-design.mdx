@@ -1,0 +1,102 @@
+---
+title: "Designing Airflow Pipelines for Multi-Tenant ETL Systems"
+date: "2026-03-28"
+tags: ["airflow", "etl", "python"]
+excerpt: "Best practices for building idempotent, resilient DAGs that serve multiple tenants at scale."
+---
+
+# Designing Airflow Pipelines for Multi-Tenant ETL Systems
+
+Apache Airflow is a powerful orchestration tool, but building scalable, multi-tenant pipelines requires careful design. In this post, I'll share lessons from production systems handling diverse data sources and tenants.
+
+## Key Design Principles
+
+### 1. **Idempotency First**
+Every task must be idempotent. This means if a task runs twice with the same input, it produces the same result without side effects.
+
+```python
+def load_data_to_warehouse(tenant_id: str, date: str):
+    """
+    Delete existing partition before insert (idempotent).
+    """
+    conn = get_snowflake_connection()
+    
+    # Delete existing data for this tenant + date
+    conn.execute(f"""
+        DELETE FROM warehouse.events 
+        WHERE tenant_id = '{tenant_id}' 
+        AND date = '{date}'
+    """)
+    
+    # Insert fresh data
+    load_fresh_data(tenant_id, date)
+```
+
+### 2. **Parameterized DAGs for Multi-Tenancy**
+Use Airflow variables and templating to generate DAGs dynamically per tenant.
+
+```python
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+
+# Define tenants from config or database
+TENANTS = ['tenant_a', 'tenant_b', 'tenant_c']
+
+for tenant in TENANTS:
+    dag_id = f'etl_{tenant}'
+    dag = DAG(
+        dag_id=dag_id,
+        start_date=datetime(2026, 1, 1),
+        schedule_interval='@daily',
+    )
+    
+    task = PythonOperator(
+        task_id=f'ingest_{tenant}',
+        python_callable=ingest_tenant_data,
+        op_kwargs={'tenant_id': tenant},
+        dag=dag,
+    )
+    
+    # Register DAG
+    globals()[dag_id] = dag
+```
+
+### 3. **Error Handling & Retries**
+Configure smart retries and alerting for production reliability.
+
+```python
+default_args = {
+    'owner': 'data-engineering',
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': notify_slack,
+}
+
+dag = DAG(
+    'my_etl_dag',
+    default_args=default_args,
+    catchup=False,
+)
+```
+
+## Real-World Pitfalls
+
+- **Hard-coded tenant IDs**: Always parameterize.
+- **Blocking downstream tasks on partial failures**: Use branching to handle partial retries gracefully.
+- **Logging tenant data**: Be careful not to log PII; use environment-based log levels.
+
+## Monitoring & Alerts
+
+Monitor Airflow metrics with Datadog, Prometheus, or native Airflow logging. Set up alerts for:
+- DAG run duration
+- Task failure rates per tenant
+- Backlog of pending tasks
+
+## Conclusion
+
+Multi-tenant Airflow pipelines at scale require discipline, but the payoff is a flexible, reliable orchestration layer that scales across your organization.
+
+---
+
+**Questions?** Reach out on LinkedIn or email me!
