@@ -121,9 +121,9 @@ export default function ChessDivider({ visitorSpeed, onSpeedChange, hideSlider =
             <div className="absolute bottom-6 left-0 w-full h-1 bg-chess-gold/50"></div>
           </div>
 
-          {/* Left Input Station */}
-          <div className="absolute left-4 sm:left-6 md:left-8 top-1/2 -translate-y-1/2 z-20">
-            <div className="sm:w-10 sm:h-10 w-8 h-8 md:w-12 md:h-12 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-blue-300 animate-pulse shadow-lg shadow-blue-400/40"></div>
+          {/* Left Input Station (use a responsive left clamp so it doesn't hug the viewport edge) */}
+          <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: 'clamp(0.75rem, 4%, 2.5rem)' }}>
+            <div className="sm:w-9 sm:h-9 w-7 h-7 md:w-11 md:h-11 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-blue-300 animate-pulse shadow-lg shadow-blue-400/40"></div>
           </div>
 
           {/* Center Processors */}

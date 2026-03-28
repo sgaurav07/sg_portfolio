@@ -39,7 +39,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-chess-black via-chess-dark to-chess-black section-bg-primary mesh-pattern">
+    <div id="top" className="min-h-screen bg-gradient-to-b from-chess-black via-chess-dark to-chess-black section-bg-primary mesh-pattern">
       {/* Background chess grid pattern */}
       <div className="chess-grid-bg"></div>
 
@@ -47,7 +47,7 @@ export default function App() {
       <header className="fixed inset-x-0 top-0 z-50 bg-chess-dark/95 backdrop-blur-md shadow-lg border-b border-chess-gold/20">
         <nav className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display, Georgia, serif'}}>
-            ♔ {siteMeta.name}
+            <a href="#top" className="text-chess-gold hover:text-chess-cream transition">♔ {siteMeta.name}</a>
           </h1>
           {/* Desktop nav */}
           <div className="hidden sm:flex gap-8 text-sm items-center">
