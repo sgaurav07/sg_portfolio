@@ -43,8 +43,8 @@ export default function App() {
       {/* Background chess grid pattern */}
       <div className="chess-grid-bg"></div>
 
-      {/* Navigation / Sticky Header */}
-      <header className="sticky top-0 z-50 bg-chess-dark/80 backdrop-blur border-b border-chess-gold/20">
+      {/* Navigation / Fixed Header */}
+      <header className="fixed inset-x-0 top-0 z-50 bg-chess-dark/95 backdrop-blur-md shadow-lg border-b border-chess-gold/20">
         <nav className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display, Georgia, serif'}}>
             ♔ {siteMeta.name}
@@ -107,7 +107,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10">
+      <main className="relative z-10 pt-20">
         {/* Admin Dashboard */}
         {showAdmin && <AdminDashboard />}
 
