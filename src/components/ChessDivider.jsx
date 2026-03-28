@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAdmin } from '../context/AdminContext'
 
-const VELOCITY = 8       // % of width per second at 1.0x speed
-const SPAWN_BASE_MS = 2000 // ms between spawns at 1.0x speed
+const VELOCITY = 8         // % of width per second at 1.0x speed
+const SPAWN_BASE_MS = 2000  // ms between spawns at 1.0x speed
+const MAX_PARTICLES = 12    // cap prevents burst on wake-up
+const CHESS_PIECES = ['♔', '♕', '♖', '♗', '♘', '♙']
 
 export default function ChessDivider({ visitorSpeed, onSpeedChange, hideSlider = false, isBackground = false }) {
   const { adminConfig } = useAdmin()
@@ -36,7 +38,6 @@ export default function ChessDivider({ visitorSpeed, onSpeedChange, hideSlider =
   }, [])
 
   const speed = localSpeed || adminConfig.animationSpeed
-  const chessPieces = ['♔', '♕', '♖', '♗', '♘', '♙']
 
   // Keep speedRef current without restarting rAF loop
   useEffect(() => {
@@ -50,42 +51,61 @@ export default function ChessDivider({ visitorSpeed, onSpeedChange, hideSlider =
     localStorage.setItem('visitorAnimationSpeed', newSpeed.toFixed(1))
   }
 
-  // Smooth 60fps particle movement via requestAnimationFrame + delta time
+  // Single rAF loop — movement + spawning merged to avoid setInterval throttling
+  // when the browser applies idle/background timer throttling (Chrome 5-min rule).
   useEffect(() => {
     let animFrameId
+    let lastSpawnTs = null
+
     const loop = (timestamp) => {
-      if (!lastTimeRef.current) lastTimeRef.current = timestamp
-      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.05) // cap delta at 50ms
+      if (!lastTimeRef.current) {
+        lastTimeRef.current = timestamp
+        lastSpawnTs = timestamp
+      }
+      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.05)
       lastTimeRef.current = timestamp
 
-      setParticles(prev =>
-        prev
+      const spawnIntervalMs = SPAWN_BASE_MS / speedRef.current
+      const shouldSpawn = lastSpawnTs !== null && (timestamp - lastSpawnTs) >= spawnIntervalMs
+      if (shouldSpawn) lastSpawnTs = timestamp
+
+      setParticles(prev => {
+        let next = prev
           .map(p => ({ ...p, position: p.position + VELOCITY * speedRef.current * dt }))
           .filter(p => p.position < 108)
-      )
+        if (shouldSpawn && next.length < MAX_PARTICLES) {
+          next = [
+            ...next,
+            {
+              id: timestamp + Math.random(),
+              position: 0,
+              pieceType: CHESS_PIECES[Math.floor(Math.random() * CHESS_PIECES.length)],
+            },
+          ]
+        }
+        return next
+      })
+
       animFrameId = requestAnimationFrame(loop)
     }
+
+    // Reset timestamps when the tab becomes visible again so stale timestamps
+    // from the throttled/paused period don't cause a dt spike or spawn burst
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        lastTimeRef.current = null
+        lastSpawnTs = null
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     animFrameId = requestAnimationFrame(loop)
     return () => {
       cancelAnimationFrame(animFrameId)
       lastTimeRef.current = null
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, []) // runs once — reads speed via ref
-
-  // Spawn particles, restarts when speed changes to update spawn rate
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setParticles(prev => [
-        ...prev,
-        {
-          id: Date.now() + Math.random(),
-          position: 0,
-          pieceType: chessPieces[Math.floor(Math.random() * chessPieces.length)],
-        },
-      ])
-    }, SPAWN_BASE_MS / speed)
-    return () => clearInterval(iv)
-  }, [speed])
+  }, []) // reads speed via speedRef — never needs to restart
 
   return (
     <div className={`${isBackground ? 'absolute inset-0 opacity-40 pointer-events-none z-0' : 'relative my-2 sm:my-3 md:my-4 lg:my-5 px-2 sm:px-4'}`}>

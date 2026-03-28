@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAdmin, verifyAdminPassword, changeAdminPassword } from '../context/AdminContext'
 
 export default function AdminDashboard() {
-  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords } = useAdmin()
+  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience } = useAdmin()
   const [activeTab, setActiveTab] = useState('components')
   const [password, setPassword] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
@@ -17,6 +17,12 @@ export default function AdminDashboard() {
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const [pwMsg, setPwMsg] = useState(null)
+
+  // Experience editor state
+  const [expEditId, setExpEditId] = useState(null)   // which entry is being edited (null = none)
+  const [expForm, setExpForm] = useState({})          // live edits for the open entry
+  const [newHighlight, setNewHighlight] = useState('')
+  const [newTech, setNewTech] = useState('')
 
   // Contacts inbox state — read directly from localStorage (separate from adminConfig)
   const loadContacts = () => {
@@ -97,12 +103,13 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 border-b border-chess-gold/20 flex-wrap">
-          {['components', 'quickfacts', 'animations', 'avatar', 'words', 'contacts', 'security'].map((tab) => (
+          {['components', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'contacts', 'security'].map((tab) => (
             <button
               key={tab}
               onClick={() => {
                 setActiveTab(tab)
                 if (tab === 'contacts') setContacts(loadContacts())
+                if (tab !== 'experience') { setExpEditId(null); setExpForm({}) }
               }}
               className={`relative px-4 py-2 font-medium transition ${
                 activeTab === tab
@@ -115,6 +122,7 @@ export default function AdminDashboard() {
                 : tab === 'animations' ? 'Animations'
                 : tab === 'avatar' ? 'Avatar'
                 : tab === 'words' ? 'Bouncing Words'
+                : tab === 'experience' ? 'Experience'
                 : tab === 'contacts' ? (
                   <span className="flex items-center gap-1.5">
                     Contacts
@@ -306,6 +314,233 @@ export default function AdminDashboard() {
                 ✓ Avatar size adjusts responsively. Other components auto-align without breaking layout.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Experience Tab */}
+        {activeTab === 'experience' && (
+          <div className="glass rounded-xl p-8 border border-chess-gold/20 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display'}}>Work Experience</h2>
+              <button
+                onClick={() => {
+                  const newEntry = {
+                    id: `exp-${Date.now()}`,
+                    role: 'New Role',
+                    company: 'Company Name',
+                    period: '20XX – Present',
+                    location: 'Remote',
+                    summary: '',
+                    highlights: [],
+                    tech: [],
+                  }
+                  const updated = [...adminConfig.experience, newEntry]
+                  updateExperience(updated)
+                  setExpEditId(newEntry.id)
+                  setExpForm(newEntry)
+                  setNewHighlight('')
+                  setNewTech('')
+                }}
+                className="px-4 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition"
+              >
+                + Add Entry
+              </button>
+            </div>
+
+            {adminConfig.experience.length === 0 && (
+              <p className="text-chess-cream/40 text-sm text-center py-8">No experience entries yet. Click "+ Add Entry" to create one.</p>
+            )}
+
+            {adminConfig.experience.map((job, idx) => {
+              const isEditing = expEditId === job.id
+              const d = isEditing ? expForm : job
+
+              const saveField = (field, val) => setExpForm(prev => ({ ...prev, [field]: val }))
+
+              const commitEdit = () => {
+                const updated = adminConfig.experience.map(e => e.id === job.id ? { ...expForm } : e)
+                updateExperience(updated)
+                setExpEditId(null)
+                setExpForm({})
+              }
+
+              const discardEdit = () => { setExpEditId(null); setExpForm({}) }
+
+              const deleteEntry = () => {
+                updateExperience(adminConfig.experience.filter(e => e.id !== job.id))
+                setExpEditId(null)
+                setExpForm({})
+              }
+
+              const moveUp = () => {
+                if (idx === 0) return
+                const arr = [...adminConfig.experience]
+                ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
+                updateExperience(arr)
+              }
+              const moveDown = () => {
+                if (idx === adminConfig.experience.length - 1) return
+                const arr = [...adminConfig.experience]
+                ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
+                updateExperience(arr)
+              }
+
+              return (
+                <div key={job.id} className={`rounded-xl border transition ${isEditing ? 'border-chess-gold/60 bg-chess-dark/40' : 'border-chess-gold/15 bg-chess-dark/20'}`}>
+                  {/* Header row */}
+                  <div className="flex items-center gap-3 px-5 py-4">
+                    <div className="flex flex-col gap-0.5">
+                      <button onClick={moveUp} disabled={idx === 0} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▲</button>
+                      <button onClick={moveDown} disabled={idx === adminConfig.experience.length - 1} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▼</button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-chess-cream truncate">{job.role} <span className="text-chess-gold/60 font-normal text-sm">— {job.company}</span></p>
+                      <p className="text-chess-cream/40 text-xs">{job.period} &bull; {job.location}</p>
+                    </div>
+                    {!isEditing && (
+                      <button
+                        onClick={() => { setExpEditId(job.id); setExpForm({ ...job }); setNewHighlight(''); setNewTech('') }}
+                        className="px-3 py-1.5 border border-chess-gold/30 text-chess-gold text-xs rounded-lg hover:bg-chess-gold/10 transition"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Edit form */}
+                  {isEditing && (
+                    <div className="px-5 pb-5 border-t border-chess-gold/15 pt-5 space-y-4">
+                      {/* Basic fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {[['role','Role / Title'],['company','Company'],['period','Period (e.g. 2021 – 2023)'],['location','Location']].map(([field, label]) => (
+                          <div key={field}>
+                            <label className="block text-xs text-chess-gold/70 mb-1">{label}</label>
+                            <input
+                              type="text"
+                              value={d[field]}
+                              onChange={e => saveField(field, e.target.value)}
+                              className="w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Summary */}
+                      <div>
+                        <label className="block text-xs text-chess-gold/70 mb-1">Summary</label>
+                        <textarea
+                          rows={3}
+                          value={d.summary}
+                          onChange={e => saveField('summary', e.target.value)}
+                          className="w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50 resize-none"
+                        />
+                      </div>
+
+                      {/* Highlights */}
+                      <div>
+                        <label className="block text-xs text-chess-gold/70 mb-2">Highlights</label>
+                        <div className="space-y-2 mb-2">
+                          {d.highlights.map((h, hi) => (
+                            <div key={hi} className="flex gap-2 items-start">
+                              <input
+                                type="text"
+                                value={h}
+                                onChange={e => {
+                                  const arr = [...d.highlights]
+                                  arr[hi] = e.target.value
+                                  saveField('highlights', arr)
+                                }}
+                                className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/15 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-1 focus:ring-chess-gold/40"
+                              />
+                              <button
+                                onClick={() => saveField('highlights', d.highlights.filter((_, i) => i !== hi))}
+                                className="px-2 py-1.5 text-red-400/70 hover:text-red-300 text-xs border border-red-500/20 rounded-lg transition"
+                              >✕</button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newHighlight}
+                            onChange={e => setNewHighlight(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && newHighlight.trim()) {
+                                saveField('highlights', [...d.highlights, newHighlight.trim()])
+                                setNewHighlight('')
+                              }
+                            }}
+                            placeholder="Add highlight… (Enter to add)"
+                            className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40"
+                          />
+                          <button
+                            onClick={() => { if (newHighlight.trim()) { saveField('highlights', [...d.highlights, newHighlight.trim()]); setNewHighlight('') } }}
+                            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition"
+                          >+ Add</button>
+                        </div>
+                      </div>
+
+                      {/* Tech tags */}
+                      <div>
+                        <label className="block text-xs text-chess-gold/70 mb-2">Tech Tags</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {d.tech.map((t, ti) => (
+                            <span key={ti} className="flex items-center gap-1 px-3 py-1 bg-chess-dark border border-chess-gold/25 text-chess-gold text-xs rounded-full">
+                              {t}
+                              <button
+                                onClick={() => saveField('tech', d.tech.filter((_, i) => i !== ti))}
+                                className="text-chess-gold/40 hover:text-red-300 ml-1"
+                              >×</button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newTech}
+                            onChange={e => setNewTech(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && newTech.trim()) {
+                                saveField('tech', [...d.tech, newTech.trim()])
+                                setNewTech('')
+                              }
+                            }}
+                            placeholder="Add tech tag… (Enter to add)"
+                            className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40"
+                          />
+                          <button
+                            onClick={() => { if (newTech.trim()) { saveField('tech', [...d.tech, newTech.trim()]); setNewTech('') } }}
+                            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition"
+                          >+ Add</button>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          onClick={commitEdit}
+                          className="px-5 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition"
+                        >
+                          Save Changes
+                        </button>
+                        <button
+                          onClick={discardEdit}
+                          className="px-4 py-2 border border-chess-gold/20 text-chess-cream/60 rounded-lg text-sm hover:border-chess-gold/40 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={deleteEntry}
+                          className="ml-auto px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition"
+                        >
+                          Delete Entry
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

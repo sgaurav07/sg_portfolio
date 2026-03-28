@@ -28,6 +28,9 @@ export default function BouncingWords() {
     const elems = Array.from(container.querySelectorAll('[data-bounce-word]'))
     if (elems.length === 0) return
 
+    // Shared lastTs — accessible by the loop and the visibility handler
+    let lastTs = null
+
     // Wait one frame so the browser has laid out the spans and offsetWidth is real
     const init = () => {
       const { width: cw, height: ch } = container.getBoundingClientRect()
@@ -48,8 +51,6 @@ export default function BouncingWords() {
           color,
         }
       })
-
-      let lastTs = null
 
       const loop = (ts) => {
         if (!lastTs) lastTs = ts
@@ -90,7 +91,17 @@ export default function BouncingWords() {
     // Single rAF delay to let the DOM paint and measure real sizes
     rafRef.current = requestAnimationFrame(init)
 
-    return () => cancelAnimationFrame(rafRef.current)
+    // Reset lastTs when the page becomes visible so the first resumed frame
+    // doesn't carry stale timestamps from while the tab was hidden/throttled
+    const onVisibilityChange = () => {
+      if (!document.hidden) lastTs = null
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [words]) // re-init whenever word list changes
 
   return (

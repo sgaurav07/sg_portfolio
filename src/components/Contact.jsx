@@ -1,22 +1,41 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
+
+const COOLDOWN_SECONDS = 60
 
 export default function Contact({ siteMeta }) {
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [cooldownLeft, setCooldownLeft] = useState(0)
+  // Honeypot — bots fill this, humans don't see it
+  const [honeypot, setHoneypot] = useState('')
+  const cooldownTimer = useRef(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const startCooldown = () => {
+    setCooldownLeft(COOLDOWN_SECONDS)
+    cooldownTimer.current = setInterval(() => {
+      setCooldownLeft((s) => {
+        if (s <= 1) { clearInterval(cooldownTimer.current); return 0 }
+        return s - 1
+      })
+    }, 1000)
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
+    // Reject silently if honeypot is filled (bot)
+    if (honeypot) return
+    if (cooldownLeft > 0) return
 
-    // Save submission to localStorage for admin inbox
     const entry = {
       id: Date.now(),
       name: formData.name,
       email: formData.email,
+      subject: formData.subject,
       message: formData.message,
       receivedAt: new Date().toISOString(),
       read: false,
@@ -29,7 +48,8 @@ export default function Contact({ siteMeta }) {
     }
 
     setSubmitted(true)
-    setFormData({ name: '', email: '', message: '' })
+    setFormData({ name: '', email: '', subject: '', message: '' })
+    startCooldown()
   }
 
   if (submitted) {
@@ -42,9 +62,10 @@ export default function Contact({ siteMeta }) {
           <p className="text-chess-cream/70">Thanks for reaching out. I'll get back to you as soon as possible.</p>
           <button
             onClick={() => setSubmitted(false)}
-            className="mt-4 px-6 py-2 border border-chess-gold/40 text-chess-gold rounded-lg hover:bg-chess-gold/10 transition"
+            disabled={cooldownLeft > 0}
+            className="mt-4 px-6 py-2 border border-chess-gold/40 text-chess-gold rounded-lg hover:bg-chess-gold/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Send another message
+            {cooldownLeft > 0 ? `Send another message (${cooldownLeft}s)` : 'Send another message'}
           </button>
         </div>
       </div>
@@ -59,11 +80,21 @@ export default function Contact({ siteMeta }) {
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Honeypot — hidden from humans, visible to bots */}
+        <input
+          type="text"
+          name="_gotcha"
+          value={honeypot}
+          onChange={e => setHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          style={{ display: 'none' }}
+          aria-hidden="true"
+        />
+
         {/* Name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-chess-gold mb-1">
-            Name
-          </label>
+          <label htmlFor="name" className="block text-sm font-medium text-chess-gold mb-1">Name *</label>
           <input
             type="text"
             id="name"
@@ -78,9 +109,7 @@ export default function Contact({ siteMeta }) {
 
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-chess-gold mb-1">
-            Email
-          </label>
+          <label htmlFor="email" className="block text-sm font-medium text-chess-gold mb-1">Email *</label>
           <input
             type="email"
             id="email"
@@ -93,11 +122,29 @@ export default function Contact({ siteMeta }) {
           />
         </div>
 
+        {/* Subject */}
+        <div>
+          <label htmlFor="subject" className="block text-sm font-medium text-chess-gold mb-1">Subject *</label>
+          <select
+            id="subject"
+            name="subject"
+            value={formData.subject}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream focus:outline-none focus:ring-2 focus:ring-chess-gold/50"
+          >
+            <option value="" disabled className="bg-chess-dark">Select a subject…</option>
+            <option value="Job Opportunity" className="bg-chess-dark">Job Opportunity</option>
+            <option value="Freelance / Contract Work" className="bg-chess-dark">Freelance / Contract Work</option>
+            <option value="Project Collaboration" className="bg-chess-dark">Project Collaboration</option>
+            <option value="Technical Discussion" className="bg-chess-dark">Technical Discussion</option>
+            <option value="Other" className="bg-chess-dark">Other</option>
+          </select>
+        </div>
+
         {/* Message */}
         <div>
-          <label htmlFor="message" className="block text-sm font-medium text-chess-gold mb-1">
-            Message
-          </label>
+          <label htmlFor="message" className="block text-sm font-medium text-chess-gold mb-1">Message *</label>
           <textarea
             id="message"
             name="message"
@@ -106,16 +153,17 @@ export default function Contact({ siteMeta }) {
             required
             rows="5"
             className="w-full px-4 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream placeholder-chess-cream/40 focus:outline-none focus:ring-2 focus:ring-chess-gold/50 resize-none"
-            placeholder="Tell me about your project..."
+            placeholder="Tell me about your project or opportunity..."
           />
         </div>
 
         {/* Submit button */}
         <button
           type="submit"
-          className="w-full px-6 py-3 bg-gradient-to-r from-chess-gold to-chess-accent text-chess-black rounded-lg hover:shadow-premium font-medium transition"
+          disabled={cooldownLeft > 0}
+          className="w-full px-6 py-3 bg-gradient-to-r from-chess-gold to-chess-accent text-chess-black rounded-lg hover:shadow-premium font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Send Message
+          {cooldownLeft > 0 ? `Please wait ${cooldownLeft}s…` : 'Send Message'}
         </button>
       </form>
 
