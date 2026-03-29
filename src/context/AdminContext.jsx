@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 
 import { projects as SEED_PROJECTS } from '../data/projects'
-import { fetchAdminConfig, upsertAdminConfig } from '../lib/supabaseClient'
+import { fetchAdminConfig, upsertAdminConfig, fetchPwHash, upsertPwHash } from '../lib/supabaseClient'
 
 const AdminContext = createContext()
 
@@ -41,10 +41,18 @@ async function pbkdf2Derive(password, saltHex) {
   return bytesToHex(bits)
 }
 
-/** Returns true if 'input' matches the stored PBKDF2 entry. */
+/** Returns true if 'input' matches the PBKDF2 entry stored in Supabase (falls back to localStorage then default). */
 export async function verifyAdminPassword(input) {
-  const stored = localStorage.getItem(PW_HASH_KEY) || DEFAULT_PW_ENTRY
-  if (!stored.startsWith('pbkdf2v1:')) return false // unknown/legacy format — reject
+  let stored = DEFAULT_PW_ENTRY
+  try {
+    const remote = await fetchPwHash()
+    if (remote && remote.startsWith('pbkdf2v1:')) stored = remote
+  } catch {
+    // Supabase unavailable — fall back to localStorage
+    const local = localStorage.getItem(PW_HASH_KEY)
+    if (local && local.startsWith('pbkdf2v1:')) stored = local
+  }
+  if (!stored.startsWith('pbkdf2v1:')) return false
   const parts = stored.split(':')
   const saltHex = parts[1]
   const storedKey = parts[2]
@@ -52,12 +60,15 @@ export async function verifyAdminPassword(input) {
   return derived === storedKey
 }
 
-/** Derives and stores PBKDF2 entry for 'newPassword' with a fresh random salt. */
+/** Derives a new PBKDF2 entry for 'newPassword' and saves it to Supabase. */
 export async function changeAdminPassword(newPassword) {
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
   const saltHex = bytesToHex(saltBytes)
   const keyHex = await pbkdf2Derive(newPassword, saltHex)
-  localStorage.setItem(PW_HASH_KEY, `pbkdf2v1:${saltHex}:${keyHex}`)
+  const entry = `pbkdf2v1:${saltHex}:${keyHex}`
+  await upsertPwHash(entry)
+  // Remove old localStorage copy now that Supabase is the source of truth
+  localStorage.removeItem(PW_HASH_KEY)
 }
 // ---------------------------------------------------------------------------
 
@@ -199,13 +210,27 @@ export const AdminProvider = ({ children }) => {
   // BEFORE the load-effect's setState could take effect, overwriting stored data.
   const [adminConfig, setAdminConfig] = useState(loadConfig)
 
-  // Seed PBKDF2 entry on first load, and migrate any legacy SHA-256 or bad
-  // entries — anything that isn't the new pbkdf2v1 format gets reset to default.
+  // Seed PBKDF2 entry in Supabase on first load; migrate any legacy localStorage hash.
   useEffect(() => {
-    const stored = localStorage.getItem(PW_HASH_KEY)
-    if (!stored || !stored.startsWith('pbkdf2v1:')) {
-      localStorage.setItem(PW_HASH_KEY, DEFAULT_PW_ENTRY)
-    }
+    ;(async () => {
+      try {
+        const remote = await fetchPwHash()
+        if (!remote || !remote.startsWith('pbkdf2v1:')) {
+          // Check if localStorage has a valid custom hash to migrate, else seed default
+          const local = localStorage.getItem(PW_HASH_KEY)
+          const toSeed = (local && local.startsWith('pbkdf2v1:')) ? local : DEFAULT_PW_ENTRY
+          await upsertPwHash(toSeed)
+        }
+        // Always clean up localStorage — Supabase is now the source of truth
+        localStorage.removeItem(PW_HASH_KEY)
+      } catch {
+        // Supabase unavailable — keep localStorage as fallback
+        const stored = localStorage.getItem(PW_HASH_KEY)
+        if (!stored || !stored.startsWith('pbkdf2v1:')) {
+          localStorage.setItem(PW_HASH_KEY, DEFAULT_PW_ENTRY)
+        }
+      }
+    })()
   }, [])
 
   // Persist every change. Avatar base64 can be large so we catch quota errors gracefully.

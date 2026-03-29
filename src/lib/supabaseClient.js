@@ -26,3 +26,21 @@ export async function upsertAdminConfig(config) {
   if (error) throw error
   return data
 }
+
+export async function fetchPwHash() {
+  const { data, error } = await supabase
+    .from('admin_config')
+    .select('pw_hash')
+    .eq('id', 'singleton')
+    .single()
+  if (error) throw error
+  return data?.pw_hash ?? null
+}
+
+export async function upsertPwHash(hash) {
+  const { error } = await supabase
+    .from('admin_config')
+    .update({ pw_hash: hash })
+    .eq('id', 'singleton')
+  if (error) throw error
+}
