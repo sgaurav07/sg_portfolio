@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAdmin, verifyAdminPassword, changeAdminPassword } from '../context/AdminContext'
 
 export default function AdminDashboard() {
-  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience, updateBlogs, updateProjects } = useAdmin()
+  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience, updateBlogs, updateProjects, updateSectionMeta } = useAdmin()
   const [activeTab, setActiveTab] = useState('components')
   const [password, setPassword] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 border-b border-chess-gold/20 flex-wrap">
-          {['components', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'projects', 'blog', 'contacts', 'security'].map((tab) => (
+          {['components', 'sections', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'projects', 'blog', 'contacts', 'security'].map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -133,6 +133,7 @@ export default function AdminDashboard() {
               }`}
             >
               {tab === 'components' ? 'Visibility'
+                : tab === 'sections' ? 'Section Text'
                 : tab === 'quickfacts' ? 'Quick Facts'
                 : tab === 'animations' ? 'Animations'
                 : tab === 'avatar' ? 'Avatar'
@@ -188,6 +189,57 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Section Text Tab */}
+        {activeTab === 'sections' && (() => {
+          const SECTION_LABELS = {
+            hero:           'Hero',
+            workExperience: 'Work Experience',
+            dataPipeline:   'Data Pipeline',
+            skills:         'Skills',
+            projects:       'Projects',
+            blog:           'Blog',
+            resume:         'Resume',
+            contact:        'Contact',
+          }
+          const INPUT = 'w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50'
+          return (
+            <div className="glass rounded-xl p-8 border border-chess-gold/20 space-y-6">
+              <h2 className="text-2xl font-bold text-chess-gold mb-2" style={{fontFamily: 'Playfair Display'}}>
+                Section Headings &amp; Taglines
+              </h2>
+              <p className="text-chess-cream/50 text-sm mb-6">Edit the bold title and subtitle shown at the top of each section.</p>
+              <div className="space-y-6">
+                {Object.entries(SECTION_LABELS).map(([key, label]) => (
+                  <div key={key} className="p-5 bg-chess-dark/40 rounded-xl border border-chess-gold/15">
+                    <p className="text-chess-gold font-semibold text-sm uppercase tracking-wider mb-3">{label}</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-chess-cream/50 mb-1">Heading (bold title)</label>
+                        <input
+                          type="text"
+                          value={(adminConfig.sectionMeta?.[key]?.heading) ?? ''}
+                          onChange={e => updateSectionMeta(key, 'heading', e.target.value)}
+                          className={INPUT}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-chess-cream/50 mb-1">Tagline (subtitle)</label>
+                        <textarea
+                          rows={2}
+                          value={(adminConfig.sectionMeta?.[key]?.tagline) ?? ''}
+                          onChange={e => updateSectionMeta(key, 'tagline', e.target.value)}
+                          className={INPUT + ' resize-none'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-chess-cream/40 text-xs pt-2">Changes are saved automatically.</p>
+            </div>
+          )
+        })()}
 
         {/* Quick Facts Tab */}
         {activeTab === 'quickfacts' && (

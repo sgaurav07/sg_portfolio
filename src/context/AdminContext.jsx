@@ -89,6 +89,16 @@ const DEFAULT_CONFIG = {
     { id: 3, text: 'DE',            size: '2rem',    weight: '900' },
   ],
   blogs: [],
+  sectionMeta: {
+    hero:           { heading: 'From data chaos to production pipelines', tagline: 'I design and deliver production-grade data pipelines for ETL, batch and streaming platforms on Azure, GCP, and Snowflake — migrating legacy systems and automating workflows for measurable impact.' },
+    workExperience: { heading: 'Work Experience', tagline: '5+ years delivering production data systems — from greenfield pipelines to enterprise cloud migrations' },
+    dataPipeline:   { heading: 'Data Pipeline Architecture', tagline: "Strategic data flows orchestrated with precision — like a grandmaster's opening, each move optimizes for scalability, reliability, and speed." },
+    skills:         { heading: 'Technical Mastery', tagline: 'Core expertise in Python + Cloud — architecture, orchestration, and optimization' },
+    projects:       { heading: 'Flagship Projects', tagline: 'Production systems delivering measurable impact — built with precision and scale' },
+    blog:           { heading: 'Technical Insights', tagline: 'Deep-dive articles on architecture, optimization, and lessons learned from production systems' },
+    resume:         { heading: 'Download Resume', tagline: 'Get my complete resume and background as a PDF. Updated regularly with latest projects and experience.' },
+    contact:        { heading: 'Get in Touch', tagline: "Have a project in mind or want to discuss data engineering? I'd love to hear from you." },
+  },
   experience: [
     {
       id: 'exp-1',
@@ -156,6 +166,17 @@ function loadConfig() {
       experience:          savedClean.experience ?? DEFAULT_CONFIG.experience,
       blogs:               savedClean.blogs      ?? DEFAULT_CONFIG.blogs,
       projects:            savedClean.projects   ?? DEFAULT_CONFIG.projects,
+      sectionMeta:         {
+        ...DEFAULT_CONFIG.sectionMeta,
+        ...(savedClean.sectionMeta ?? {}),
+        // deep-merge each section so new default keys survive upgrades
+        ...Object.fromEntries(
+          Object.keys(DEFAULT_CONFIG.sectionMeta).map(k => [
+            k,
+            { ...DEFAULT_CONFIG.sectionMeta[k], ...(savedClean.sectionMeta?.[k] ?? {}) },
+          ])
+        ),
+      },
     }
   } catch {
     return DEFAULT_CONFIG
@@ -303,6 +324,16 @@ export const AdminProvider = ({ children }) => {
     }))
   }
 
+  const updateSectionMeta = (section, field, val) => {
+    setAdminConfig((prev) => ({
+      ...prev,
+      sectionMeta: {
+        ...prev.sectionMeta,
+        [section]: { ...prev.sectionMeta[section], [field]: val },
+      },
+    }))
+  }
+
   const value = {
     adminConfig,
     updateProject,
@@ -317,6 +348,7 @@ export const AdminProvider = ({ children }) => {
     updateExperience,
     updateBlogs,
     updateProjects,
+    updateSectionMeta,
   }
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>

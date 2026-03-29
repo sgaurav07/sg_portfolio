@@ -1,14 +1,16 @@
 import React from 'react'
+import { useAdmin } from '../context/AdminContext'
 
 export default function DataPipeline() {
+  const { adminConfig } = useAdmin()
   return (
     <section className="py-20 relative">
       <div className="max-w-5xl mx-auto px-4">
         <h2 className="text-4xl font-bold text-chess-cream mb-4 text-center" style={{fontFamily: 'Playfair Display'}}>
-          Data Pipeline Architecture
+          {adminConfig.sectionMeta?.dataPipeline?.heading ?? 'Data Pipeline Architecture'}
         </h2>
         <p className="text-chess-cream/70 text-center mb-12 max-w-2xl mx-auto">
-          Strategic data flows orchestrated with precision — like a grandmaster's opening, each move optimizes for scalability, reliability, and speed.
+          {adminConfig.sectionMeta?.dataPipeline?.tagline ?? "Strategic data flows orchestrated with precision — like a grandmaster's opening, each move optimizes for scalability, reliability, and speed."}
         </p>
 
         {/* SVG Pipeline Diagram */}

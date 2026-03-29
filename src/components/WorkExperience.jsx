@@ -12,11 +12,10 @@ export default function WorkExperience() {
         className="text-4xl font-bold text-chess-cream mb-4 text-center"
         style={{ fontFamily: 'Playfair Display' }}
       >
-        Work Experience
+        {adminConfig.sectionMeta?.workExperience?.heading ?? 'Work Experience'}
       </h2>
       <p className="text-chess-cream/70 text-center mb-14 max-w-2xl mx-auto">
-        5+ years delivering production data systems — from greenfield pipelines to enterprise
-        cloud migrations
+        {adminConfig.sectionMeta?.workExperience?.tagline ?? '5+ years delivering production data systems — from greenfield pipelines to enterprise cloud migrations'}
       </p>
 
       <div className="relative">

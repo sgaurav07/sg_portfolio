@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react'
+import { useAdmin } from '../context/AdminContext'
 
 const COOLDOWN_SECONDS = 60
 
 export default function Contact({ siteMeta }) {
+  const { adminConfig } = useAdmin()
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
   const [cooldownLeft, setCooldownLeft] = useState(0)
@@ -74,9 +76,11 @@ export default function Contact({ siteMeta }) {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-3xl font-bold mb-4 text-chess-gold" style={{fontFamily: 'Playfair Display'}}>Get in Touch</h2>
+      <h2 className="text-3xl font-bold mb-4 text-chess-gold" style={{fontFamily: 'Playfair Display'}}>
+        {adminConfig.sectionMeta?.contact?.heading ?? 'Get in Touch'}
+      </h2>
       <p className="text-chess-cream/70 mb-8">
-        Have a project in mind or want to discuss data engineering? I'd love to hear from you.
+        {adminConfig.sectionMeta?.contact?.tagline ?? "Have a project in mind or want to discuss data engineering? I'd love to hear from you."}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">

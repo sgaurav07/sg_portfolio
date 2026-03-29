@@ -137,10 +137,10 @@ export default function App() {
           <>
             <section className="max-w-5xl mx-auto px-4 py-20 section-bg-secondary relative z-10">
               <h2 className="text-4xl font-bold text-chess-cream mb-4 text-center" style={{fontFamily: 'Playfair Display'}}>
-                Technical Mastery
+                {adminConfig.sectionMeta?.skills?.heading ?? 'Technical Mastery'}
               </h2>
               <p className="text-chess-cream/70 text-center mb-12 max-w-2xl mx-auto">
-                Core expertise in Python + Cloud — architecture, orchestration, and optimization
+                {adminConfig.sectionMeta?.skills?.tagline ?? 'Core expertise in Python + Cloud — architecture, orchestration, and optimization'}
               </p>
               <SkillGrid />
             </section>
@@ -153,10 +153,10 @@ export default function App() {
           <>
             <section id="projects" className="max-w-5xl mx-auto px-4 py-20">
               <h2 className="text-4xl font-bold text-chess-cream mb-4 text-center" style={{fontFamily: 'Playfair Display'}}>
-                Flagship Projects
+                {adminConfig.sectionMeta?.projects?.heading ?? 'Flagship Projects'}
               </h2>
               <p className="text-chess-cream/70 text-center mb-12 max-w-2xl mx-auto">
-                Production systems delivering measurable impact — built with precision and scale
+                {adminConfig.sectionMeta?.projects?.tagline ?? 'Production systems delivering measurable impact — built with precision and scale'}
               </p>
               <div className="grid gap-6">
                 {(adminConfig.projects ?? []).filter(p => p.visible !== false).map((project) => (
@@ -177,10 +177,10 @@ export default function App() {
           <>
             <section id="blog" className="max-w-5xl mx-auto px-4 py-20 section-bg-secondary relative z-10">
               <h2 className="text-4xl font-bold text-chess-cream mb-4 text-center" style={{fontFamily: 'Playfair Display'}}>
-                Technical Insights
+                {adminConfig.sectionMeta?.blog?.heading ?? 'Technical Insights'}
               </h2>
               <p className="text-chess-cream/70 text-center mb-12 max-w-2xl mx-auto">
-                Deep-dive articles on architecture, optimization, and lessons learned from production systems
+                {adminConfig.sectionMeta?.blog?.tagline ?? 'Deep-dive articles on architecture, optimization, and lessons learned from production systems'}
               </p>
               <BlogIndex onOpen={(post) => setSelectedBlog(post)} />
             </section>

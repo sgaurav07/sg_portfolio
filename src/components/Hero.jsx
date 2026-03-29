@@ -54,7 +54,7 @@ export default function Hero({ siteMeta, visitorSpeed }) {
 
         {/* Headline - Premium */}
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 text-chess-cream leading-tight animate-slide-up" style={{fontFamily: 'Playfair Display, Georgia, serif'}}>
-          {siteMeta.headline}
+          {adminConfig.sectionMeta?.hero?.heading ?? siteMeta.headline}
         </h1>
 
         {/* Gold accent line */}
@@ -68,7 +68,7 @@ export default function Hero({ siteMeta, visitorSpeed }) {
           {/* Tagline Content - Constrained width on top of animation */}
           <div className="relative z-10 max-w-3xl mx-auto px-4">
             <p className="text-lg sm:text-xl text-chess-cream/90 leading-relaxed" style={{fontWeight: '300', letterSpacing: '0.3px'}}>
-              {siteMeta.tagline}
+              {adminConfig.sectionMeta?.hero?.tagline ?? siteMeta.tagline}
             </p>
           </div>
         </div>

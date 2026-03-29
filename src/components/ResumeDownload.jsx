@@ -8,9 +8,11 @@ export default function ResumeDownload({ siteMeta }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Download Section */}
         <div>
-          <h3 className="text-2xl font-bold text-chess-gold mb-4" style={{fontFamily: 'Playfair Display'}}>Download Resume</h3>
+          <h3 className="text-2xl font-bold text-chess-gold mb-4" style={{fontFamily: 'Playfair Display'}}>
+            {adminConfig.sectionMeta?.resume?.heading ?? 'Download Resume'}
+          </h3>
           <p className="text-chess-cream/70 mb-6">
-            Get my complete resume and background as a PDF. Updated regularly with latest projects and experience.
+            {adminConfig.sectionMeta?.resume?.tagline ?? 'Get my complete resume and background as a PDF. Updated regularly with latest projects and experience.'}
           </p>
           <a
             href={siteMeta.resumePath}
