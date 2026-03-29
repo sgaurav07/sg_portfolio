@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 
 import { projects as SEED_PROJECTS } from '../data/projects'
+import { fetchAdminConfig, upsertAdminConfig } from '../lib/supabaseClient'
 
 const AdminContext = createContext()
 
@@ -208,17 +209,17 @@ export const AdminProvider = ({ children }) => {
   }, [])
 
   // Persist every change. Avatar base64 can be large so we catch quota errors gracefully.
+  const saveTimer = useRef(null)
   useEffect(() => {
+    // Save to localStorage immediately (best-effort) and schedule Supabase sync.
     try {
       localStorage.setItem('portfolioAdmin', JSON.stringify(adminConfig))
     } catch (err) {
       if (err.name === 'QuotaExceededError') {
-        // Avatar photo may push past the ~5 MB limit — store without it and warn.
         console.warn('localStorage quota exceeded. Saving config without avatar image.')
         try {
           const slim = { ...adminConfig, avatar: { ...adminConfig.avatar, customUrl: null } }
           localStorage.setItem('portfolioAdmin', JSON.stringify(slim))
-          // Store avatar separately so it survives the slim save
           if (adminConfig.avatar.customUrl) {
             localStorage.setItem('portfolioAdminAvatar', adminConfig.avatar.customUrl)
           }
@@ -227,6 +228,19 @@ export const AdminProvider = ({ children }) => {
         }
       }
     }
+
+    // Debounce writes to Supabase to avoid excessive network calls during rapid edits
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await upsertAdminConfig(adminConfig)
+      } catch (err) {
+        // If Supabase isn't configured or request fails, just log and keep localStorage as source of truth
+        console.warn('Failed to save admin config to Supabase:', err.message || err)
+      }
+    }, 800)
+
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [adminConfig])
 
   // Restore avatar from its dedicated key if the main config lost it due to quota
@@ -236,6 +250,39 @@ export const AdminProvider = ({ children }) => {
       setAdminConfig(prev => ({ ...prev, avatar: { ...prev.avatar, customUrl: savedAvatar } }))
     }
   }, []) // runs once on mount
+
+  // Attempt to load remote config from Supabase on mount. If available, deep-merge it over defaults.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const remote = await fetchAdminConfig()
+        if (cancelled || !remote) return
+        setAdminConfig(prev => ({
+          ...prev,
+          ...remote,
+          componentVisibility: { ...prev.componentVisibility, ...(remote.componentVisibility ?? {}) },
+          quickFacts: { ...prev.quickFacts, ...(remote.quickFacts ?? {}) },
+          avatar: { ...prev.avatar, ...(remote.avatar ?? {}) },
+          experience: remote.experience ?? prev.experience,
+          blogs: remote.blogs ?? prev.blogs,
+          projects: remote.projects ?? prev.projects,
+          skills: remote.skills ?? prev.skills,
+          sectionMeta: {
+            ...prev.sectionMeta,
+            ...(remote.sectionMeta ?? {}),
+            ...Object.fromEntries(
+              Object.keys(prev.sectionMeta).map(k => [k, { ...prev.sectionMeta[k], ...(remote.sectionMeta?.[k] ?? {}) }])
+            ),
+          },
+        }))
+      } catch (err) {
+        // ignore — offline or not configured. localStorage remains the working backup.
+        // console.warn('Could not load remote admin config:', err.message || err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const updateProjects = (projectsArray) => {
     setAdminConfig((prev) => ({ ...prev, projects: projectsArray }))
