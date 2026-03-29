@@ -89,6 +89,14 @@ const DEFAULT_CONFIG = {
     { id: 3, text: 'DE',            size: '2rem',    weight: '900' },
   ],
   blogs: [],
+  skills: [
+    { id: 'sk-1', category: 'Cloud Platforms (Core)', icon: '\u2601\ufe0f', items: ['Azure', 'GCP', 'AWS'] },
+    { id: 'sk-2', category: 'Data Warehouse',          icon: '\ud83c\udfd7\ufe0f', items: ['Snowflake', 'Postgres', 'BigQuery'] },
+    { id: 'sk-3', category: 'Orchestration',           icon: '\u26a1\ufe0f', items: ['Apache Airflow', 'Vertex AI', 'Dataproc'] },
+    { id: 'sk-4', category: 'Languages (Core: Python)',icon: '\ud83d\udc0d', items: ['Python', 'SQL', 'Flask'] },
+    { id: 'sk-5', category: 'Streaming & Tools',       icon: '\ud83d\udd04', items: ['PySpark', 'MLflow', 'Singer.io', 'Pub/Sub'] },
+    { id: 'sk-6', category: 'DevOps & Version Control',icon: '\ud83d\udd00', items: ['Git', 'GitHub', 'CI/CD', 'gcloud CLI'] },
+  ],
   sectionMeta: {
     hero:           { heading: 'From data chaos to production pipelines', tagline: 'I design and deliver production-grade data pipelines for ETL, batch and streaming platforms on Azure, GCP, and Snowflake — migrating legacy systems and automating workflows for measurable impact.' },
     workExperience: { heading: 'Work Experience', tagline: '5+ years delivering production data systems — from greenfield pipelines to enterprise cloud migrations' },
@@ -166,6 +174,7 @@ function loadConfig() {
       experience:          savedClean.experience ?? DEFAULT_CONFIG.experience,
       blogs:               savedClean.blogs      ?? DEFAULT_CONFIG.blogs,
       projects:            savedClean.projects   ?? DEFAULT_CONFIG.projects,
+      skills:              savedClean.skills      ?? DEFAULT_CONFIG.skills,
       sectionMeta:         {
         ...DEFAULT_CONFIG.sectionMeta,
         ...(savedClean.sectionMeta ?? {}),
@@ -324,6 +333,13 @@ export const AdminProvider = ({ children }) => {
     }))
   }
 
+  const updateSkills = (skillsArray) => {
+    setAdminConfig((prev) => ({
+      ...prev,
+      skills: skillsArray,
+    }))
+  }
+
   const updateSectionMeta = (section, field, val) => {
     setAdminConfig((prev) => ({
       ...prev,
@@ -348,6 +364,7 @@ export const AdminProvider = ({ children }) => {
     updateExperience,
     updateBlogs,
     updateProjects,
+    updateSkills,
     updateSectionMeta,
   }
 

@@ -1,14 +1,9 @@
 import React from 'react'
+import { useAdmin } from '../context/AdminContext'
 
 export default function SkillGrid() {
-  const skills = [
-    { category: 'Cloud Platforms (Core)', items: ['Azure', 'GCP', 'AWS'], icon: '☁️' },
-    { category: 'Data Warehouse', items: ['Snowflake', 'Postgres', 'BigQuery'], icon: '🏛️' },
-    { category: 'Orchestration', items: ['Apache Airflow', 'Vertex AI', 'Dataproc'], icon: '⚡' },
-    { category: 'Languages (Core: Python)', items: ['Python', 'SQL', 'Flask'], icon: '🐍' },
-    { category: 'Streaming & Tools', items: ['PySpark', 'MLflow', 'Singer.io', 'Pub/Sub'], icon: '🔄' },
-    { category: 'DevOps & Version Control', items: ['Git', 'GitHub', 'CI/CD', 'gcloud CLI'], icon: '🔀' },
-  ]
+  const { adminConfig } = useAdmin()
+  const skills = adminConfig.skills ?? []
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

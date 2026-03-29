@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAdmin, verifyAdminPassword, changeAdminPassword } from '../context/AdminContext'
 
 export default function AdminDashboard() {
-  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience, updateBlogs, updateProjects, updateSectionMeta } = useAdmin()
+  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience, updateBlogs, updateProjects, updateSkills, updateSectionMeta } = useAdmin()
   const [activeTab, setActiveTab] = useState('components')
   const [password, setPassword] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
@@ -36,6 +36,11 @@ export default function AdminDashboard() {
   const [newProjSkill, setNewProjSkill] = useState('')
   const [newProjMetricLabel, setNewProjMetricLabel] = useState('')
   const [newProjMetricValue, setNewProjMetricValue] = useState('')
+
+  // Skill category editor state
+  const [skillEditId, setSkillEditId] = useState(null)
+  const [skillForm, setSkillForm] = useState({})
+  const [newSkillItem, setNewSkillItem] = useState('')
 
   // Contacts inbox state — read directly from localStorage (separate from adminConfig)
   const loadContacts = () => {
@@ -116,7 +121,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 border-b border-chess-gold/20 flex-wrap">
-          {['components', 'sections', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'projects', 'blog', 'contacts', 'security'].map((tab) => (
+          {['components', 'sections', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'projects', 'skills', 'blog', 'contacts', 'security'].map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -125,6 +130,7 @@ export default function AdminDashboard() {
                 if (tab !== 'experience') { setExpEditId(null); setExpForm({}) }
                 if (tab !== 'blog') { setBlogEditId(null); setBlogForm({}) }
                 if (tab !== 'projects') { setProjEditId(null); setProjForm({}) }
+                if (tab !== 'skills') { setSkillEditId(null); setSkillForm({}) }
               }}
               className={`relative px-4 py-2 font-medium transition ${
                 activeTab === tab
@@ -140,6 +146,7 @@ export default function AdminDashboard() {
                 : tab === 'words' ? 'Bouncing Words'
                 : tab === 'experience' ? 'Experience'
                 : tab === 'projects' ? 'Projects'
+                : tab === 'skills' ? 'Skills'
                 : tab === 'blog' ? (
                   <span className="flex items-center gap-1.5">
                     Blog
@@ -730,6 +737,101 @@ export default function AdminDashboard() {
           )
         })()}
 
+        {/* Skills Management Tab */}
+        {activeTab === 'skills' && (() => {
+          const skills = adminConfig.skills ?? []
+          const INPUT = 'w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50'
+
+          const saveSkillField = (field, val) => setSkillForm(prev => ({ ...prev, [field]: val }))
+
+          const commitSkill = () => {
+            let updated
+            if (skillEditId === '__new__') {
+              updated = [...skills, { ...skillForm, id: `sk-${Date.now()}` }]
+            } else {
+              updated = skills.map(s => s.id === skillEditId ? { ...skillForm } : s)
+            }
+            updateSkills(updated)
+            setSkillEditId(null); setSkillForm({}); setNewSkillItem('')
+          }
+
+          const discardSkill = () => { setSkillEditId(null); setSkillForm({}); setNewSkillItem('') }
+
+          const deleteSkill = (id) => {
+            updateSkills(skills.filter(s => s.id !== id))
+            if (skillEditId === id) discardSkill()
+          }
+
+          const moveSkill = (idx, dir) => {
+            const arr = [...skills]
+            const swap = idx + dir
+            if (swap < 0 || swap >= arr.length) return
+            ;[arr[idx], arr[swap]] = [arr[swap], arr[idx]]
+            updateSkills(arr)
+          }
+
+          return (
+            <div className="glass rounded-xl border border-chess-gold/20 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-chess-gold/15">
+                <h2 className="text-2xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display'}}>Technical Skills</h2>
+                <button
+                  onClick={() => { setSkillEditId('__new__'); setSkillForm({ category: '', icon: '', items: [] }); setNewSkillItem('') }}
+                  disabled={skillEditId === '__new__'}
+                  className="px-4 py-2 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition disabled:opacity-40"
+                >+ Add Category</button>
+              </div>
+
+              {skillEditId === '__new__' && (
+                <div className="border-b border-chess-gold/15">
+                  <div className="px-5 py-3 bg-chess-gold/5">
+                    <p className="text-chess-gold text-xs font-semibold uppercase tracking-wider">New Category</p>
+                  </div>
+                  <SkillCategoryEditor
+                    form={skillForm} saveField={saveSkillField}
+                    newSkillItem={newSkillItem} setNewSkillItem={setNewSkillItem}
+                    onCommit={commitSkill} onDiscard={discardSkill} isNew
+                  />
+                </div>
+              )}
+
+              <div className="divide-y divide-chess-gold/10">
+                {skills.map((skill, idx) => {
+                  const isEditing = skillEditId === skill.id
+                  return (
+                    <div key={skill.id}>
+                      <div className="flex items-center gap-3 px-5 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => moveSkill(idx, -1)} disabled={idx === 0} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▲</button>
+                          <button onClick={() => moveSkill(idx, 1)} disabled={idx === skills.length - 1} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▼</button>
+                        </div>
+                        <span className="text-xl flex-shrink-0">{skill.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-chess-cream text-sm truncate">{skill.category}</p>
+                          <p className="text-chess-cream/40 text-xs truncate">{(skill.items ?? []).join(' · ')}</p>
+                        </div>
+                        {!isEditing && (
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => { setSkillEditId(skill.id); setSkillForm({ ...skill, items: [...(skill.items ?? [])] }); setNewSkillItem('') }} className="px-3 py-1.5 border border-chess-gold/30 text-chess-gold text-xs rounded-lg hover:bg-chess-gold/10 transition">Edit</button>
+                            <button onClick={() => deleteSkill(skill.id)} className="px-3 py-1.5 bg-red-900/30 border border-red-500/30 text-red-300 text-xs rounded-lg hover:bg-red-900/60 transition">Delete</button>
+                          </div>
+                        )}
+                      </div>
+                      {isEditing && (
+                        <SkillCategoryEditor
+                          form={skillForm} saveField={saveSkillField}
+                          newSkillItem={newSkillItem} setNewSkillItem={setNewSkillItem}
+                          onCommit={commitSkill} onDiscard={discardSkill}
+                          onDelete={() => deleteSkill(skill.id)}
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Blog Management Tab */}
         {activeTab === 'blog' && (() => {
           const blogs = adminConfig.blogs ?? []
@@ -1174,18 +1276,6 @@ export default function AdminDashboard() {
             </p>
           </div>
         )}
-
-        {/* Coming Soon Sections */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {['Projects Management'].map((section) => (
-            <div key={section} className="glass rounded-xl p-6 border border-chess-gold/20 opacity-60">
-              <h3 className="text-xl font-bold text-chess-gold mb-2" style={{fontFamily: 'Playfair Display'}}>
-                {section}
-              </h3>
-              <p className="text-chess-cream/60 text-sm">Coming soon - Advanced management features</p>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   )
@@ -1449,6 +1539,77 @@ function ProjectEditor({ form, saveField, newProjTech, setNewProjTech, newProjSk
         {!isNew && onDelete && (
           <button onClick={onDelete} className="ml-auto px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition">
             Delete Project
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SkillCategoryEditor — inline form for creating / editing a skill category
+// ---------------------------------------------------------------------------
+function SkillCategoryEditor({ form, saveField, newSkillItem, setNewSkillItem, onCommit, onDiscard, onDelete, isNew }) {
+  const INPUT = 'w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50'
+
+  return (
+    <div className="px-5 pb-5 pt-4 border-t border-chess-gold/10 space-y-4">
+
+      {/* Category name + icon */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="sm:col-span-2">
+          <label className="block text-xs text-chess-gold/70 mb-1">Category Name</label>
+          <input type="text" value={form.category || ''} onChange={e => saveField('category', e.target.value)} placeholder="e.g. Cloud Platforms" className={INPUT} />
+        </div>
+        <div>
+          <label className="block text-xs text-chess-gold/70 mb-1">Icon (emoji)</label>
+          <input type="text" value={form.icon || ''} onChange={e => saveField('icon', e.target.value)} placeholder="e.g. ☁️" className={INPUT} />
+        </div>
+      </div>
+
+      {/* Items / skills list */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-2">Skills in this category</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {(form.items ?? []).map((item, i) => (
+            <span key={i} className="flex items-center gap-1 px-3 py-1 bg-chess-dark border border-chess-gold/25 text-chess-gold text-xs rounded-full">
+              {item}
+              <button onClick={() => saveField('items', form.items.filter((_, idx) => idx !== i))} className="text-chess-gold/40 hover:text-red-300 ml-1">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newSkillItem}
+            onChange={e => setNewSkillItem(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && newSkillItem.trim()) {
+                saveField('items', [...(form.items ?? []), newSkillItem.trim()])
+                setNewSkillItem('')
+              }
+            }}
+            placeholder="Add skill… (Enter)"
+            className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40"
+          />
+          <button
+            onClick={() => { if (newSkillItem.trim()) { saveField('items', [...(form.items ?? []), newSkillItem.trim()]); setNewSkillItem('') } }}
+            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition"
+          >+ Add</button>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-3 pt-1 flex-wrap">
+        <button onClick={onCommit} className="px-5 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition">
+          {isNew ? 'Create Category' : 'Save Changes'}
+        </button>
+        <button onClick={onDiscard} className="px-4 py-2 border border-chess-gold/20 text-chess-cream/60 rounded-lg text-sm hover:border-chess-gold/40 transition">
+          Cancel
+        </button>
+        {!isNew && onDelete && (
+          <button onClick={onDelete} className="ml-auto px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition">
+            Delete Category
           </button>
         )}
       </div>
