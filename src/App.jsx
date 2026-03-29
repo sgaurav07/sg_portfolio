@@ -12,11 +12,12 @@ import Contact from './components/Contact'
 import Footer from './components/Footer'
 import ChessDivider from './components/ChessDivider'
 import AdminDashboard from './components/AdminDashboard'
-import { projects } from './data/projects'
+import BlogPostModal from './components/BlogPostModal'
 import { siteMeta } from './data/siteMeta'
 
 export default function App() {
   const [selectedProject, setSelectedProject] = useState(null)
+  const [selectedBlog, setSelectedBlog] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [visitorSpeed, setVisitorSpeed] = useState(null)
@@ -158,7 +159,7 @@ export default function App() {
                 Production systems delivering measurable impact — built with precision and scale
               </p>
               <div className="grid gap-6">
-                {projects.map((project) => (
+                {(adminConfig.projects ?? []).filter(p => p.visible !== false).map((project) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
@@ -181,7 +182,7 @@ export default function App() {
               <p className="text-chess-cream/70 text-center mb-12 max-w-2xl mx-auto">
                 Deep-dive articles on architecture, optimization, and lessons learned from production systems
               </p>
-              <BlogIndex />
+              <BlogIndex onOpen={(post) => setSelectedBlog(post)} />
             </section>
             <ChessDivider visitorSpeed={effectiveSpeed} onSpeedChange={handleSpeedChange} />
           </>
@@ -213,6 +214,14 @@ export default function App() {
         <CaseStudyModal
           project={selectedProject}
           onClose={() => setSelectedProject(null)}
+        />
+      )}
+
+      {/* Blog post modal */}
+      {selectedBlog && (
+        <BlogPostModal
+          post={selectedBlog}
+          onClose={() => setSelectedBlog(null)}
         />
       )}
     </div>

@@ -1,79 +1,82 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
+import { useAdmin } from '../context/AdminContext'
 
-export default function BlogIndex() {
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
+export default function BlogIndex({ onOpen }) {
+  const { adminConfig } = useAdmin()
 
-  useEffect(() => {
-    // Import and load blog posts from src/posts
-    const loadPosts = async () => {
-      try {
-        // For now, show a placeholder; later posts will be dynamically loaded
-        setPosts([
-          {
-            id: 'sample-1',
-            title: 'Building scalable data pipelines with Apache Airflow',
-            excerpt: 'Learn best practices for designing Airflow DAGs for multi-tenant ETL systems...',
-            date: '2026-03-28',
-            tags: ['airflow', 'etl'],
-          },
-          {
-            id: 'sample-2',
-            title: 'Migrating legacy streams to GCP Dataflow',
-            excerpt: 'A practical guide to migrating IBM-streams workloads to Google Cloud Dataflow...',
-            date: '2026-03-15',
-            tags: ['gcp', 'migration'],
-          },
-        ])
-        setLoading(false)
-      } catch (err) {
-        console.error('Failed to load posts:', err)
-        setLoading(false)
-      }
-    }
-    loadPosts()
-  }, [])
-
-  if (loading) return <p className="text-chess-cream/60">Loading posts...</p>
+  // Show only published, non-archived posts sorted newest-first
+  const posts = (adminConfig.blogs ?? [])
+    .filter(p => p.published && !p.archived)
+    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
 
   return (
     <div className="space-y-6">
       {posts.length === 0 ? (
         <p className="text-chess-cream/60">Blog posts coming soon. Check back later!</p>
       ) : (
-        posts.map((post) => (
-          <article
-            key={post.id}
-            className="glass p-6 rounded-lg border border-chess-gold/20 hover:border-chess-gold/60 hover:shadow-premium transition"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-xl font-semibold text-chess-gold flex-1" style={{fontFamily: 'Playfair Display'}}>
-                {post.title}
-              </h3>
-              <time className="text-chess-cream/60 text-sm ml-4 flex-shrink-0">
-                {new Date(post.date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </time>
-            </div>
-            <p className="text-chess-cream/70 mb-3">{post.excerpt}</p>
-            <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2 py-1 bg-chess-dark/50 border border-chess-gold/20 text-chess-gold text-xs rounded hover:border-chess-gold/60 transition"
+        posts.map((post) => {
+          const publishedDate = post.publishedAt
+            ? new Date(post.publishedAt).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })
+            : null
+          const updatedDate = post.updatedAt && post.updatedAt !== post.publishedAt
+            ? new Date(post.updatedAt).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+              })
+            : null
+
+          return (
+            <article
+              key={post.id}
+              className="glass p-6 rounded-xl border border-chess-gold/20 hover:border-chess-gold/50 hover:shadow-lg transition"
+            >
+              {/* Tags row */}
+              {post.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 bg-chess-dark/50 border border-chess-gold/20 text-chess-gold text-xs rounded-full font-mono"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Title + date */}
+              <div className="flex justify-between items-start gap-4 mb-2">
+                <h3
+                  className="text-xl font-semibold text-chess-gold leading-snug"
+                  style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
                 >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <a href={`#blog/${post.id}`} className="inline-block mt-3 text-chess-gold font-medium text-sm hover:text-chess-accent transition">
-              Read more →
-            </a>
-          </article>
-        ))
+                  {post.title}
+                </h3>
+              </div>
+
+              {/* Datetime meta */}
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-chess-cream/40 font-mono mb-3">
+                {publishedDate && <span>📅 {publishedDate}</span>}
+                {updatedDate   && <span>✏️ Updated {updatedDate}</span>}
+              </div>
+
+              {/* Excerpt */}
+              <p className="text-chess-cream/70 text-sm leading-relaxed mb-4 line-clamp-3">
+                {post.excerpt}
+              </p>
+
+              {/* Read more */}
+              <button
+                onClick={() => onOpen && onOpen(post)}
+                className="text-chess-gold font-medium text-sm hover:text-chess-cream transition"
+              >
+                Read more →
+              </button>
+            </article>
+          )
+        })
       )}
     </div>
   )

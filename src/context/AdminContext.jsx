@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
+import { projects as SEED_PROJECTS } from '../data/projects'
+
 const AdminContext = createContext()
 
 // ---------------------------------------------------------------------------
@@ -59,7 +61,7 @@ export async function changeAdminPassword(newPassword) {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CONFIG = {
-  projects: [],
+  projects: SEED_PROJECTS.map(p => ({ ...p, visible: true, skills: [] })),
   blog: [],
   componentVisibility: {
     hero: true,
@@ -86,6 +88,7 @@ const DEFAULT_CONFIG = {
     { id: 2, text: 'SDE',           size: '1.6rem',  weight: '900' },
     { id: 3, text: 'DE',            size: '2rem',    weight: '900' },
   ],
+  blogs: [],
   experience: [
     {
       id: 'exp-1',
@@ -151,6 +154,8 @@ function loadConfig() {
       quickFacts:          { ...DEFAULT_CONFIG.quickFacts,          ...(savedClean.quickFacts ?? {}) },
       avatar:              { ...DEFAULT_CONFIG.avatar,              ...(savedClean.avatar ?? {}) },
       experience:          savedClean.experience ?? DEFAULT_CONFIG.experience,
+      blogs:               savedClean.blogs      ?? DEFAULT_CONFIG.blogs,
+      projects:            savedClean.projects   ?? DEFAULT_CONFIG.projects,
     }
   } catch {
     return DEFAULT_CONFIG
@@ -201,6 +206,10 @@ export const AdminProvider = ({ children }) => {
       setAdminConfig(prev => ({ ...prev, avatar: { ...prev.avatar, customUrl: savedAvatar } }))
     }
   }, []) // runs once on mount
+
+  const updateProjects = (projectsArray) => {
+    setAdminConfig((prev) => ({ ...prev, projects: projectsArray }))
+  }
 
   const updateProject = (id, updatedProject) => {
     setAdminConfig((prev) => ({
@@ -287,6 +296,13 @@ export const AdminProvider = ({ children }) => {
     }))
   }
 
+  const updateBlogs = (blogsArray) => {
+    setAdminConfig((prev) => ({
+      ...prev,
+      blogs: blogsArray,
+    }))
+  }
+
   const value = {
     adminConfig,
     updateProject,
@@ -299,6 +315,8 @@ export const AdminProvider = ({ children }) => {
     updateCustomAvatar,
     updateBouncingWords,
     updateExperience,
+    updateBlogs,
+    updateProjects,
   }
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>

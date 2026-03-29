@@ -59,6 +59,23 @@ export default function CaseStudyModal({ project, onClose }) {
             </div>
           </div>
 
+          {/* Skills Acquired */}
+          {project.skills?.length > 0 && (
+            <div>
+              <h3 className="text-xl font-semibold text-chess-gold mb-3" style={{fontFamily: 'Playfair Display'}}>Skills Acquired / Learned</h3>
+              <div className="flex flex-wrap gap-2">
+                {project.skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-3 py-1 bg-chess-gold/10 border border-chess-gold/40 text-chess-gold text-sm rounded-full font-medium"
+                  >
+                    ✦ {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Metrics */}
           <div>
             <h3 className="text-xl font-semibold text-chess-gold mb-3" style={{fontFamily: 'Playfair Display'}}>Outcomes</h3>

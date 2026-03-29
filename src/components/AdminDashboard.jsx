@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAdmin, verifyAdminPassword, changeAdminPassword } from '../context/AdminContext'
 
 export default function AdminDashboard() {
-  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience } = useAdmin()
+  const { adminConfig, updateComponentVisibility, updateQuickFacts, updateAnimationSpeed, updateAvatarSize, updateCustomAvatar, updateBouncingWords, updateExperience, updateBlogs, updateProjects } = useAdmin()
   const [activeTab, setActiveTab] = useState('components')
   const [password, setPassword] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
@@ -19,10 +19,23 @@ export default function AdminDashboard() {
   const [pwMsg, setPwMsg] = useState(null)
 
   // Experience editor state
-  const [expEditId, setExpEditId] = useState(null)   // which entry is being edited (null = none)
-  const [expForm, setExpForm] = useState({})          // live edits for the open entry
+  const [expEditId, setExpEditId] = useState(null)
+  const [expForm, setExpForm] = useState({})
   const [newHighlight, setNewHighlight] = useState('')
   const [newTech, setNewTech] = useState('')
+
+  // Blog editor state
+  const [blogEditId, setBlogEditId] = useState(null)
+  const [blogForm, setBlogForm] = useState({})
+  const [newBlogTag, setNewBlogTag] = useState('')
+
+  // Project editor state
+  const [projEditId, setProjEditId] = useState(null)
+  const [projForm, setProjForm] = useState({})
+  const [newProjTech, setNewProjTech] = useState('')
+  const [newProjSkill, setNewProjSkill] = useState('')
+  const [newProjMetricLabel, setNewProjMetricLabel] = useState('')
+  const [newProjMetricValue, setNewProjMetricValue] = useState('')
 
   // Contacts inbox state — read directly from localStorage (separate from adminConfig)
   const loadContacts = () => {
@@ -103,13 +116,15 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-8 border-b border-chess-gold/20 flex-wrap">
-          {['components', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'contacts', 'security'].map((tab) => (
+          {['components', 'quickfacts', 'animations', 'avatar', 'words', 'experience', 'projects', 'blog', 'contacts', 'security'].map((tab) => (
             <button
               key={tab}
               onClick={() => {
-                setActiveTab(tab)
+                  setActiveTab(tab)
                 if (tab === 'contacts') setContacts(loadContacts())
                 if (tab !== 'experience') { setExpEditId(null); setExpForm({}) }
+                if (tab !== 'blog') { setBlogEditId(null); setBlogForm({}) }
+                if (tab !== 'projects') { setProjEditId(null); setProjForm({}) }
               }}
               className={`relative px-4 py-2 font-medium transition ${
                 activeTab === tab
@@ -123,6 +138,17 @@ export default function AdminDashboard() {
                 : tab === 'avatar' ? 'Avatar'
                 : tab === 'words' ? 'Bouncing Words'
                 : tab === 'experience' ? 'Experience'
+                : tab === 'projects' ? 'Projects'
+                : tab === 'blog' ? (
+                  <span className="flex items-center gap-1.5">
+                    Blog
+                    {(adminConfig.blogs ?? []).filter(b => !b.published && !b.archived).length > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-chess-gold/30 text-chess-gold text-xs font-bold rounded-full">
+                        {(adminConfig.blogs ?? []).filter(b => !b.published && !b.archived).length}
+                      </span>
+                    )}
+                  </span>
+                )
                 : tab === 'contacts' ? (
                   <span className="flex items-center gap-1.5">
                     Contacts
@@ -544,6 +570,262 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Projects CRUD Tab */}
+        {activeTab === 'projects' && (() => {
+          const projects = adminConfig.projects ?? []
+
+          const saveProjField = (field, val) => setProjForm(prev => ({ ...prev, [field]: val }))
+
+          const commitProj = () => {
+            let updated
+            if (projEditId === '__new__') {
+              const entry = { ...projForm, id: `proj-${Date.now()}`, visible: true }
+              updated = [...projects, entry]
+            } else {
+              updated = projects.map(p => p.id === projEditId ? { ...projForm } : p)
+            }
+            updateProjects(updated)
+            setProjEditId(null); setProjForm({}); setNewProjTech(''); setNewProjSkill(''); setNewProjMetricLabel(''); setNewProjMetricValue('')
+          }
+
+          const discardProj = () => { setProjEditId(null); setProjForm({}); setNewProjTech(''); setNewProjSkill('') }
+
+          const deleteProj = (id) => {
+            updateProjects(projects.filter(p => p.id !== id))
+            if (projEditId === id) discardProj()
+          }
+
+          const moveProj = (idx, dir) => {
+            const arr = [...projects]
+            const swap = idx + dir
+            if (swap < 0 || swap >= arr.length) return
+            ;[arr[idx], arr[swap]] = [arr[swap], arr[idx]]
+            updateProjects(arr)
+          }
+
+          const toggleVisible = (id) => {
+            updateProjects(projects.map(p => p.id === id ? { ...p, visible: !p.visible } : p))
+          }
+
+          const openNew = () => {
+            setProjEditId('__new__')
+            setProjForm({ title: '', role: '', shortDesc: '', problem: '', approach: '', tech: [], skills: [], metrics: [], visible: true })
+            setNewProjTech(''); setNewProjSkill(''); setNewProjMetricLabel(''); setNewProjMetricValue('')
+          }
+
+          return (
+            <div className="glass rounded-xl p-8 border border-chess-gold/20 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display'}}>Projects</h2>
+                <button onClick={openNew} className="px-4 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition">+ Add Project</button>
+              </div>
+
+              {/* New project form */}
+              {projEditId === '__new__' && (
+                <ProjectEditor
+                  form={projForm} saveField={saveProjField}
+                  newProjTech={newProjTech} setNewProjTech={setNewProjTech}
+                  newProjSkill={newProjSkill} setNewProjSkill={setNewProjSkill}
+                  newProjMetricLabel={newProjMetricLabel} setNewProjMetricLabel={setNewProjMetricLabel}
+                  newProjMetricValue={newProjMetricValue} setNewProjMetricValue={setNewProjMetricValue}
+                  onCommit={commitProj} onDiscard={discardProj} isNew
+                />
+              )}
+
+              {projects.length === 0 && projEditId !== '__new__' && (
+                <p className="text-chess-cream/40 text-sm text-center py-8">No projects yet. Click "+ Add Project" to create one.</p>
+              )}
+
+              {projects.map((proj, idx) => {
+                const isEditing = projEditId === proj.id
+                return (
+                  <div key={proj.id} className={`rounded-xl border transition ${isEditing ? 'border-chess-gold/60 bg-chess-dark/40' : !proj.visible ? 'border-chess-gold/10 bg-chess-dark/10 opacity-60' : 'border-chess-gold/15 bg-chess-dark/20'}`}>
+                    <div className="flex items-center gap-3 px-5 py-4">
+                      <div className="flex flex-col gap-0.5">
+                        <button onClick={() => moveProj(idx, -1)} disabled={idx === 0} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▲</button>
+                        <button onClick={() => moveProj(idx, 1)} disabled={idx === projects.length - 1} className="text-chess-gold/40 hover:text-chess-gold disabled:opacity-20 text-xs leading-none">▼</button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                          <p className="font-semibold text-chess-cream truncate">{proj.title}</p>
+                          {!proj.visible && <span className="px-2 py-0.5 bg-chess-dark border border-chess-gold/20 text-chess-gold/50 text-xs rounded-full">Hidden</span>}
+                        </div>
+                        <p className="text-chess-cream/40 text-xs truncate">{proj.shortDesc}</p>
+                      </div>
+                      {!isEditing && (
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button onClick={() => { setProjEditId(proj.id); setProjForm({ ...proj }); setNewProjTech(''); setNewProjSkill(''); setNewProjMetricLabel(''); setNewProjMetricValue('') }} className="px-3 py-1.5 border border-chess-gold/30 text-chess-gold text-xs rounded-lg hover:bg-chess-gold/10 transition">Edit</button>
+                          <button onClick={() => toggleVisible(proj.id)} className={`px-3 py-1.5 border text-xs rounded-lg transition ${proj.visible ? 'border-orange-500/30 text-orange-400 hover:bg-orange-900/20' : 'border-green-500/30 text-green-400 hover:bg-green-900/20'}`}>{proj.visible ? 'Hide' : 'Show'}</button>
+                          <button onClick={() => deleteProj(proj.id)} className="px-3 py-1.5 bg-red-900/30 border border-red-500/30 text-red-300 text-xs rounded-lg hover:bg-red-900/60 transition">Delete</button>
+                        </div>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <ProjectEditor
+                        form={projForm} saveField={saveProjField}
+                        newProjTech={newProjTech} setNewProjTech={setNewProjTech}
+                        newProjSkill={newProjSkill} setNewProjSkill={setNewProjSkill}
+                        newProjMetricLabel={newProjMetricLabel} setNewProjMetricLabel={setNewProjMetricLabel}
+                        newProjMetricValue={newProjMetricValue} setNewProjMetricValue={setNewProjMetricValue}
+                        onCommit={commitProj} onDiscard={discardProj}
+                        onDelete={() => deleteProj(proj.id)}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
+        {/* Blog Management Tab */}
+        {activeTab === 'blog' && (() => {
+          const blogs = adminConfig.blogs ?? []
+
+          const saveBlogField = (field, val) => setBlogForm(prev => ({ ...prev, [field]: val }))
+
+          const commitBlog = () => {
+            const now = new Date().toISOString()
+            let updated
+            if (blogEditId === '__new__') {
+              const entry = { ...blogForm, id: `blog-${Date.now()}`, publishedAt: now, updatedAt: now }
+              updated = [...blogs, entry]
+            } else {
+              updated = blogs.map(b => b.id === blogEditId ? { ...blogForm, updatedAt: now } : b)
+            }
+            updateBlogs(updated)
+            setBlogEditId(null)
+            setBlogForm({})
+            setNewBlogTag('')
+          }
+
+          const discardBlog = () => { setBlogEditId(null); setBlogForm({}); setNewBlogTag('') }
+
+          const deleteBlog = (id) => {
+            updateBlogs(blogs.filter(b => b.id !== id))
+            if (blogEditId === id) { setBlogEditId(null); setBlogForm({}) }
+          }
+
+          const toggleArchive = (id) => {
+            updateBlogs(blogs.map(b => b.id === id ? { ...b, archived: !b.archived } : b))
+          }
+
+          const togglePublish = (id) => {
+            const now = new Date().toISOString()
+            updateBlogs(blogs.map(b => {
+              if (b.id !== id) return b
+              const nowPublishing = !b.published
+              return { ...b, published: nowPublishing, publishedAt: nowPublishing ? (b.publishedAt || now) : b.publishedAt }
+            }))
+          }
+
+          const openNew = () => {
+            setBlogEditId('__new__')
+            setBlogForm({ title: '', excerpt: '', content: '', tags: [], published: false, archived: false })
+            setNewBlogTag('')
+          }
+
+          return (
+            <div className="glass rounded-xl p-8 border border-chess-gold/20 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-chess-gold" style={{fontFamily: 'Playfair Display'}}>Blog Posts</h2>
+                <button
+                  onClick={openNew}
+                  className="px-4 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition"
+                >
+                  + Write Post
+                </button>
+              </div>
+
+              {/* New post editor */}
+              {blogEditId === '__new__' && (
+                <BlogEditor
+                  form={blogForm}
+                  newBlogTag={newBlogTag}
+                  setNewBlogTag={setNewBlogTag}
+                  saveField={saveBlogField}
+                  onCommit={commitBlog}
+                  onDiscard={discardBlog}
+                  isNew
+                />
+              )}
+
+              {blogs.length === 0 && blogEditId !== '__new__' && (
+                <p className="text-chess-cream/40 text-sm text-center py-8">No posts yet. Click "+ Write Post" to create your first.</p>
+              )}
+
+              {/* Post list */}
+              {[...blogs].reverse().map(post => {
+                const isEditing = blogEditId === post.id
+                const publishedDate = post.publishedAt
+                  ? new Date(post.publishedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : null
+                const updatedDate = post.updatedAt && post.updatedAt !== post.publishedAt
+                  ? new Date(post.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : null
+
+                return (
+                  <div key={post.id} className={`rounded-xl border transition ${isEditing ? 'border-chess-gold/60 bg-chess-dark/40' : post.archived ? 'border-chess-gold/10 bg-chess-dark/10 opacity-60' : 'border-chess-gold/15 bg-chess-dark/20'}`}>
+                    {/* Row header */}
+                    <div className="flex items-start gap-3 px-5 py-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <p className="font-semibold text-chess-cream truncate">{post.title || <span className="italic text-chess-cream/40">Untitled</span>}</p>
+                          {post.published && !post.archived && <span className="px-2 py-0.5 bg-green-900/40 border border-green-500/30 text-green-400 text-xs rounded-full">Published</span>}
+                          {!post.published && !post.archived && <span className="px-2 py-0.5 bg-chess-dark border border-chess-gold/20 text-chess-gold/60 text-xs rounded-full">Draft</span>}
+                          {post.archived && <span className="px-2 py-0.5 bg-red-900/30 border border-red-500/20 text-red-400/70 text-xs rounded-full">Archived</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-chess-cream/35 font-mono">
+                          {publishedDate && <span>📅 {publishedDate}</span>}
+                          {updatedDate   && <span>✏️ {updatedDate}</span>}
+                        </div>
+                        {!isEditing && post.excerpt && (
+                          <p className="text-chess-cream/50 text-sm mt-1.5 line-clamp-2">{post.excerpt}</p>
+                        )}
+                      </div>
+                      {!isEditing && (
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                          <button
+                            onClick={() => { setBlogEditId(post.id); setBlogForm({ ...post }); setNewBlogTag('') }}
+                            className="px-3 py-1.5 border border-chess-gold/30 text-chess-gold text-xs rounded-lg hover:bg-chess-gold/10 transition"
+                          >Edit</button>
+                          <button
+                            onClick={() => togglePublish(post.id)}
+                            className={`px-3 py-1.5 border text-xs rounded-lg transition ${post.published ? 'border-amber-500/30 text-amber-400 hover:bg-amber-900/20' : 'border-green-500/30 text-green-400 hover:bg-green-900/20'}`}
+                          >{post.published ? 'Unpublish' : 'Publish'}</button>
+                          <button
+                            onClick={() => toggleArchive(post.id)}
+                            className={`px-3 py-1.5 border text-xs rounded-lg transition ${post.archived ? 'border-chess-gold/30 text-chess-gold hover:bg-chess-gold/10' : 'border-orange-500/30 text-orange-400 hover:bg-orange-900/20'}`}
+                          >{post.archived ? 'Unarchive' : 'Archive'}</button>
+                          <button
+                            onClick={() => deleteBlog(post.id)}
+                            className="px-3 py-1.5 bg-red-900/30 border border-red-500/30 text-red-300 text-xs rounded-lg hover:bg-red-900/60 transition"
+                          >Delete</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Inline edit form */}
+                    {isEditing && (
+                      <BlogEditor
+                        form={blogForm}
+                        newBlogTag={newBlogTag}
+                        setNewBlogTag={setNewBlogTag}
+                        saveField={saveBlogField}
+                        onCommit={commitBlog}
+                        onDiscard={discardBlog}
+                        onDelete={() => deleteBlog(post.id)}
+                        publishedAt={post.publishedAt}
+                        updatedAt={post.updatedAt}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {/* Contacts Inbox Tab */}
         {activeTab === 'contacts' && (
           <div className="glass rounded-xl p-8 border border-chess-gold/20 space-y-4">
@@ -843,7 +1125,7 @@ export default function AdminDashboard() {
 
         {/* Coming Soon Sections */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {['Projects Management', 'Blog Management'].map((section) => (
+          {['Projects Management'].map((section) => (
             <div key={section} className="glass rounded-xl p-6 border border-chess-gold/20 opacity-60">
               <h3 className="text-xl font-bold text-chess-gold mb-2" style={{fontFamily: 'Playfair Display'}}>
                 {section}
@@ -854,5 +1136,270 @@ export default function AdminDashboard() {
         </div>
       </div>
     </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// BlogEditor — reusable inline blog post form (new or existing)
+// ---------------------------------------------------------------------------
+function BlogEditor({ form, newBlogTag, setNewBlogTag, saveField, onCommit, onDiscard, onDelete, isNew, publishedAt, updatedAt }) {
+  const publishedDate = publishedAt
+    ? new Date(publishedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null
+  const updatedDate = updatedAt && updatedAt !== publishedAt
+    ? new Date(updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null
+
+  return (
+    <div className="px-5 pb-6 border-t border-chess-gold/15 pt-5 space-y-4">
+      {/* Dates (read-only) */}
+      {!isNew && (publishedDate || updatedDate) && (
+        <div className="flex flex-wrap gap-x-5 text-xs text-chess-cream/35 font-mono">
+          {publishedDate && <span>📅 Published: {publishedDate}</span>}
+          {updatedDate   && <span>✏️ Updated: {updatedDate}</span>}
+        </div>
+      )}
+
+      {/* Title */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Title</label>
+        <input
+          type="text"
+          value={form.title || ''}
+          onChange={e => saveField('title', e.target.value)}
+          placeholder="Post title"
+          className="w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50"
+        />
+      </div>
+
+      {/* Excerpt */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Excerpt <span className="text-chess-cream/30">(shown on blog index)</span></label>
+        <textarea
+          rows={2}
+          value={form.excerpt || ''}
+          onChange={e => saveField('excerpt', e.target.value)}
+          placeholder="Short teaser for the post…"
+          className="w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50 resize-none"
+        />
+      </div>
+
+      {/* Content */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Content <span className="text-chess-cream/30">(full post body)</span></label>
+        <textarea
+          rows={12}
+          value={form.content || ''}
+          onChange={e => saveField('content', e.target.value)}
+          placeholder="Write your post here…"
+          className="w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50 resize-y font-mono leading-relaxed"
+        />
+      </div>
+
+      {/* Tags */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-2">Tags</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {(form.tags ?? []).map((t, ti) => (
+            <span key={ti} className="flex items-center gap-1 px-3 py-1 bg-chess-dark border border-chess-gold/25 text-chess-gold text-xs rounded-full">
+              {t}
+              <button
+                onClick={() => saveField('tags', form.tags.filter((_, i) => i !== ti))}
+                className="text-chess-gold/40 hover:text-red-300 ml-1"
+              >×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newBlogTag}
+            onChange={e => setNewBlogTag(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && newBlogTag.trim()) {
+                saveField('tags', [...(form.tags ?? []), newBlogTag.trim()])
+                setNewBlogTag('')
+              }
+            }}
+            placeholder="Add tag… (Enter)"
+            className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40"
+          />
+          <button
+            onClick={() => { if (newBlogTag.trim()) { saveField('tags', [...(form.tags ?? []), newBlogTag.trim()]); setNewBlogTag('') } }}
+            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition"
+          >+ Add</button>
+        </div>
+      </div>
+
+      {/* Publish toggle */}
+      <label className="flex items-center gap-3 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!form.published}
+          onChange={e => saveField('published', e.target.checked)}
+          className="w-4 h-4 accent-chess-gold"
+        />
+        <span className="text-chess-cream/80 text-sm">Publish immediately</span>
+        <span className="text-chess-cream/40 text-xs">(unchecked = draft)</span>
+      </label>
+
+      {/* Action buttons */}
+      <div className="flex gap-3 pt-2 flex-wrap">
+        <button
+          onClick={onCommit}
+          className="px-5 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition"
+        >
+          {isNew ? 'Create Post' : 'Save Changes'}
+        </button>
+        <button
+          onClick={onDiscard}
+          className="px-4 py-2 border border-chess-gold/20 text-chess-cream/60 rounded-lg text-sm hover:border-chess-gold/40 transition"
+        >
+          Cancel
+        </button>
+        {!isNew && onDelete && (
+          <button
+            onClick={onDelete}
+            className="ml-auto px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition"
+          >
+            Delete Post
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// ProjectEditor — inline form for creating / editing a project
+// ---------------------------------------------------------------------------
+function ProjectEditor({ form, saveField, newProjTech, setNewProjTech, newProjSkill, setNewProjSkill, newProjMetricLabel, setNewProjMetricLabel, newProjMetricValue, setNewProjMetricValue, onCommit, onDiscard, onDelete, isNew }) {
+
+  const INPUT = 'w-full px-3 py-2 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm focus:outline-none focus:ring-2 focus:ring-chess-gold/50'
+  const TEXTAREA = INPUT + ' resize-none'
+
+  return (
+    <div className="px-5 pb-6 border-t border-chess-gold/15 pt-5 space-y-5">
+
+      {/* Title + Role */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-chess-gold/70 mb-1">Project Title</label>
+          <input type="text" value={form.title || ''} onChange={e => saveField('title', e.target.value)} placeholder="e.g. Vimeo CDN Pipeline" className={INPUT} />
+        </div>
+        <div>
+          <label className="block text-xs text-chess-gold/70 mb-1">Your Role</label>
+          <input type="text" value={form.role || ''} onChange={e => saveField('role', e.target.value)} placeholder="e.g. Senior Data Engineer" className={INPUT} />
+        </div>
+      </div>
+
+      {/* Short Description */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Short Description <span className="text-chess-cream/30">(shown on card)</span></label>
+        <input type="text" value={form.shortDesc || ''} onChange={e => saveField('shortDesc', e.target.value)} placeholder="One-liner summary…" className={INPUT} />
+      </div>
+
+      {/* Problem */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Problem</label>
+        <textarea rows={3} value={form.problem || ''} onChange={e => saveField('problem', e.target.value)} placeholder="What problem did this project solve?" className={TEXTAREA} />
+      </div>
+
+      {/* Approach */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-1">Approach / Solution</label>
+        <textarea rows={3} value={form.approach || ''} onChange={e => saveField('approach', e.target.value)} placeholder="How did you solve it?" className={TEXTAREA} />
+      </div>
+
+      {/* Tech Stack */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-2">Tech Stack</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {(form.tech ?? []).map((t, ti) => (
+            <span key={ti} className="flex items-center gap-1 px-3 py-1 bg-chess-dark border border-chess-gold/25 text-chess-gold text-xs rounded-full">
+              {t}
+              <button onClick={() => saveField('tech', form.tech.filter((_, i) => i !== ti))} className="text-chess-gold/40 hover:text-red-300 ml-1">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input type="text" value={newProjTech} onChange={e => setNewProjTech(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && newProjTech.trim()) { saveField('tech', [...(form.tech ?? []), newProjTech.trim()]); setNewProjTech('') } }}
+            placeholder="Add tech… (Enter)" className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40" />
+          <button onClick={() => { if (newProjTech.trim()) { saveField('tech', [...(form.tech ?? []), newProjTech.trim()]); setNewProjTech('') } }}
+            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition">+ Add</button>
+        </div>
+      </div>
+
+      {/* Skills Acquired */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-2">Skills Acquired / Learned</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {(form.skills ?? []).map((s, si) => (
+            <span key={si} className="flex items-center gap-1 px-3 py-1 bg-chess-gold/10 border border-chess-gold/40 text-chess-gold text-xs rounded-full font-medium">
+              ✦ {s}
+              <button onClick={() => saveField('skills', form.skills.filter((_, i) => i !== si))} className="text-chess-gold/40 hover:text-red-300 ml-1">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input type="text" value={newProjSkill} onChange={e => setNewProjSkill(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && newProjSkill.trim()) { saveField('skills', [...(form.skills ?? []), newProjSkill.trim()]); setNewProjSkill('') } }}
+            placeholder="Add skill… (Enter)" className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40" />
+          <button onClick={() => { if (newProjSkill.trim()) { saveField('skills', [...(form.skills ?? []), newProjSkill.trim()]); setNewProjSkill('') } }}
+            className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition">+ Add</button>
+        </div>
+      </div>
+
+      {/* Metrics / Outcomes */}
+      <div>
+        <label className="block text-xs text-chess-gold/70 mb-2">Outcomes / Metrics</label>
+        <div className="space-y-2 mb-2">
+          {(form.metrics ?? []).map((m, mi) => (
+            <div key={mi} className="flex gap-2 items-center p-2 bg-chess-dark/40 rounded-lg border border-chess-gold/10">
+              <div className="flex-1 min-w-0">
+                <p className="text-chess-gold text-xs font-medium truncate">{m.label}</p>
+                <p className="text-chess-cream/60 text-xs truncate">{m.value}</p>
+              </div>
+              <button onClick={() => saveField('metrics', form.metrics.filter((_, i) => i !== mi))} className="px-2 py-1 text-red-400/70 hover:text-red-300 text-xs border border-red-500/20 rounded-lg transition flex-shrink-0">✕</button>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input type="text" value={newProjMetricLabel} onChange={e => setNewProjMetricLabel(e.target.value)} placeholder="Metric label (e.g. Latency)" className="px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40" />
+          <div className="flex gap-2">
+            <input type="text" value={newProjMetricValue} onChange={e => setNewProjMetricValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newProjMetricLabel.trim() && newProjMetricValue.trim()) {
+                  saveField('metrics', [...(form.metrics ?? []), { label: newProjMetricLabel.trim(), value: newProjMetricValue.trim(), note: null }])
+                  setNewProjMetricLabel(''); setNewProjMetricValue('')
+                }
+              }}
+              placeholder="Value (Enter to add)" className="flex-1 px-3 py-1.5 bg-chess-dark/50 border border-chess-gold/20 rounded-lg text-chess-cream text-sm placeholder-chess-cream/30 focus:outline-none focus:ring-1 focus:ring-chess-gold/40" />
+            <button onClick={() => {
+              if (newProjMetricLabel.trim() && newProjMetricValue.trim()) {
+                saveField('metrics', [...(form.metrics ?? []), { label: newProjMetricLabel.trim(), value: newProjMetricValue.trim(), note: null }])
+                setNewProjMetricLabel(''); setNewProjMetricValue('')
+              }
+            }} className="px-3 py-1.5 bg-chess-gold/20 text-chess-gold text-sm rounded-lg hover:bg-chess-gold/30 transition">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-3 pt-2 flex-wrap">
+        <button onClick={onCommit} className="px-5 py-2 bg-chess-gold text-chess-black rounded-lg text-sm font-semibold hover:bg-chess-gold/80 transition">
+          {isNew ? 'Create Project' : 'Save Changes'}
+        </button>
+        <button onClick={onDiscard} className="px-4 py-2 border border-chess-gold/20 text-chess-cream/60 rounded-lg text-sm hover:border-chess-gold/40 transition">
+          Cancel
+        </button>
+        {!isNew && onDelete && (
+          <button onClick={onDelete} className="ml-auto px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition">
+            Delete Project
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
