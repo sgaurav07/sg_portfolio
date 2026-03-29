@@ -39,6 +39,15 @@ export default function App() {
     setVisitorSpeed(newSpeed)
   }
 
+  // Opens admin panel and scrolls to it
+  const scrollToAdmin = () => {
+    setShowAdmin(true)
+    // Wait one tick for the section to mount before scrolling
+    setTimeout(() => {
+      document.getElementById('admin')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
   return (
     <div id="top" className="min-h-screen bg-gradient-to-b from-chess-black via-chess-dark to-chess-black section-bg-primary mesh-pattern">
       {/* Background chess grid pattern */}
@@ -68,7 +77,7 @@ export default function App() {
               Contact
             </a>
             <button
-              onClick={() => setShowAdmin(!showAdmin)}
+              onClick={scrollToAdmin}
               className="px-3 py-1 border border-chess-gold/40 text-chess-gold/80 text-xs rounded hover:border-chess-gold transition"
               title="Admin Panel"
             >
@@ -98,7 +107,7 @@ export default function App() {
               </a>
             ))}
             <button
-              onClick={() => { setShowAdmin(!showAdmin); setMobileNavOpen(false) }}
+              onClick={() => { scrollToAdmin(); setMobileNavOpen(false) }}
               className="self-start px-3 py-1 border border-chess-gold/40 text-chess-gold/80 text-xs rounded hover:border-chess-gold transition"
             >
               ⚙️ Admin
@@ -110,7 +119,7 @@ export default function App() {
       {/* Main Content */}
       <main className="relative z-10 pt-20">
         {/* Admin Dashboard */}
-        {showAdmin && <AdminDashboard />}
+        {showAdmin && <div id="admin"><AdminDashboard /></div>}
 
         {/* Hero Section */}
         {adminConfig.componentVisibility.hero && <Hero siteMeta={siteMeta} visitorSpeed={effectiveSpeed} />}
@@ -208,6 +217,16 @@ export default function App() {
 
       {/* Footer */}
       <Footer siteMeta={siteMeta} />
+
+      {/* Floating admin gear FAB — always visible bottom-right */}
+      <button
+        onClick={scrollToAdmin}
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center rounded-full bg-chess-dark border-2 border-chess-gold/50 text-chess-gold text-xl shadow-lg hover:border-chess-gold hover:bg-chess-gold/10 hover:scale-110 transition-all duration-200"
+        title="Go to Admin Panel"
+        aria-label="Open admin panel"
+      >
+        ⚙️
+      </button>
 
       {/* Case Study Modal */}
       {selectedProject && (
