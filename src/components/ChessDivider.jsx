@@ -274,27 +274,28 @@ export default function ChessDivider({ visitorSpeed, onSpeedChange, hideSlider =
           </div>
         </div>
 
-        {/* Speed Slider */}
-        {!hideSlider && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-64 sm:w-72">
-            <div className="flex items-center gap-3 p-2">
-              <span className="text-chess-gold/70 text-xs font-semibold flex-shrink-0">Speed</span>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={localSpeed}
-                onChange={handleSpeedChange}
-                className="flex-1 h-2 bg-chess-dark rounded-lg appearance-none cursor-pointer accent-chess-gold"
-              />
-              <span className="text-chess-gold text-xs sm:text-sm font-bold flex-shrink-0 w-10 text-right">
-                {localSpeed.toFixed(1)}x
-              </span>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Speed Slider — placed outside factory so it never overlaps the belt */}
+      {!hideSlider && (
+        <div className="flex justify-center mt-2">
+          <div className="flex items-center gap-3 px-4 py-1.5 rounded-lg bg-chess-dark/60 border border-chess-gold/20 w-64 sm:w-72">
+            <span className="text-chess-gold/70 text-xs font-semibold flex-shrink-0">Speed</span>
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value={localSpeed}
+              onChange={handleSpeedChange}
+              className="flex-1 h-2 bg-chess-dark rounded-lg appearance-none cursor-pointer accent-chess-gold"
+            />
+            <span className="text-chess-gold text-xs sm:text-sm font-bold flex-shrink-0 w-10 text-right">
+              {localSpeed.toFixed(1)}x
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Labels */}
       {!isBackground && (
