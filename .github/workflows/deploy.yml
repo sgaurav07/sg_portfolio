@@ -35,8 +35,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Sets the Vite base path to /repo-name/ automatically
-          VITE_BASE: /${{ github.event.repository.name }}/
+          # When deploying to a custom domain served at the root, build with base '/'
+          # (use repository-name path when you want GitHub Pages project site under username.github.io/repo)
+          VITE_BASE: /
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
